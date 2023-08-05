@@ -60,6 +60,11 @@ class Device {
   async close(): Promise<void> {
     await promisify(this.device.close.bind(this.device))()
   }
+
+  async getChipId(): Promise<string> {
+    const data = await this.sendCommand(1011, 0x0000)
+    return data.toString('hex')
+  }
 }
 
 export default Device
