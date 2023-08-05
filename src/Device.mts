@@ -72,7 +72,7 @@ class Device {
     if (!(await this.isInReaderMode())) throw new Error('Failed to set reader mode')
   }
 
-  async scanTag14A(): Promise<string> {
+  async scanTag14A(): Promise<{ uid: string; sak: string; atqa: string }> {
     const response = await this.sendCommand(2000, 0x0000)
 
     if (response.status === Status.HF_TAG_NO) throw new Error('No tag found')
@@ -83,12 +83,12 @@ class Device {
     if (response.status === Status.HF_ERRPARITY) throw new Error('Data parity error')
     if (response.status !== Status.HF_TAG_OK) throw new Error('Unknown error')
 
-    // 'uid_size': data[10],
-    // 'uid_hex': data[0:data[10]].hex(),
-    // 'sak_hex': hex(data[12]).lstrip('0x').rjust(2, '0'),
-    // 'atqa_hex': data[13:15].hex().upper(),
+    const uidSize = response.data[10]
+    const uid = response.data.subarray(0, uidSize).toString('hex')
+    const sak = response.data[12].toString(16).padStart(2, '0')
+    const atqa = response.data.subarray(13, 15).toString('hex').toUpperCase()
 
-    return response.data.toString('hex')
+    return { uid, sak, atqa }
   }
 }
 
