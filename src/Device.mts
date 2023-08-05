@@ -3,6 +3,11 @@ import { promisify } from 'util'
 
 import { createDataFrame, readDataFrame } from './dataFrames.mjs'
 
+const STATUS_PAR_ERR = 0x60
+const STATUS_DEVICE_MODE_ERROR = 0x66
+const STATUS_INVALID_CMD = 0x67
+const STATUS_NOT_IMPLEMENTED = 0x69
+
 class Device {
   private device: SerialPort
 
@@ -33,7 +38,11 @@ class Device {
           const response = readDataFrame(frame)
 
           if (response.cmd !== cmd) throw new Error('Command mismatch')
-          if (response.status !== status) throw new Error('Status mismatch')
+
+          if (response.status === STATUS_PAR_ERR) throw new Error('Parity error')
+          if (response.status === STATUS_DEVICE_MODE_ERROR) throw new Error('Device mode error')
+          if (response.status === STATUS_INVALID_CMD) throw new Error('Invalid command')
+          if (response.status === STATUS_NOT_IMPLEMENTED) throw new Error('Not implemented')
 
           resolve(response.data)
         } catch (err) {
