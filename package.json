@@ -10,6 +10,8 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.0.0",
     "serialport": "^11.0.1"
   },
   "devDependencies": {
