@@ -1,4 +1,12 @@
+import Status from './Status.mjs'
+
 const SOF = 0x11 // start of frame (SOF)
+
+interface DataFrame {
+  cmd: number
+  status: Status
+  data: Buffer
+}
 
 const calculateLRC = (bytes: Buffer): number => {
   let ret = 0x00
@@ -36,7 +44,7 @@ const createDataFrame = (cmd: number, status: number, data = Buffer.alloc(0)) =>
   return Buffer.from([...frame, calculateLRC(frame)])
 }
 
-const readDataFrame = (frame: Buffer) => {
+const readDataFrame = (frame: Buffer): DataFrame => {
   const sof = frame.readUInt8(0)
   const sofLRC = frame.readUInt8(1)
 
@@ -63,4 +71,4 @@ const readDataFrame = (frame: Buffer) => {
   return { cmd, status, data }
 }
 
-export { createDataFrame, readDataFrame }
+export { createDataFrame, readDataFrame, DataFrame }
