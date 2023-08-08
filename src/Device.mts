@@ -5,6 +5,13 @@ import { DataFrame, createDataFrame, readDataFrame } from './dataFrames.mjs'
 import Status from './Status.mjs'
 import Command from './Commands.mjs'
 
+export enum KeyType {
+  A = 0x60,
+  B = 0x61,
+}
+
+export const parseKeyType = (keyType: string) => (keyType.toUpperCase() === 'A' ? KeyType.A : KeyType.B)
+
 class Device {
   private device: SerialPort
 
@@ -90,6 +97,45 @@ class Device {
     const atqa = response.data.subarray(13, 15).toString('hex').toUpperCase()
 
     return { uid, sak, atqa }
+  }
+
+  async detectNtDistance(
+    knownBlock: number,
+    knownKeyType: KeyType,
+    knownKey: Buffer
+  ): Promise<{ uid: number; distance: number }> {
+    const data = Buffer.concat([Buffer.from([knownKeyType, knownBlock]), knownKey])
+    const response = await this.sendCommand(Command.DATA_CMD_MF1_NT_DIST_DETECT, 0x00, data)
+    const uid = response.data.readUInt32BE(0)
+    const distance = response.data.readUInt32BE(4)
+    return { uid, distance }
+  }
+
+  async acquireNestedGroups(
+    knownBlock: number,
+    knownKeyType: KeyType,
+    knownKey: Buffer,
+    targetBlock: number,
+    targetKeyType: KeyType
+  ): Promise<{ nt: number; ntEnc: number; par: number }[]> {
+    const data = Buffer.concat([
+      Buffer.from([knownKeyType, knownBlock]),
+      knownKey,
+      Buffer.from([targetKeyType, targetBlock]),
+    ])
+    const response = await this.sendCommand(Command.DATA_CMD_MF1_NESTED_ACQUIRE, 0x00, data)
+    if (response.data.length % 9 !== 0) throw new Error('Invalid response length')
+
+    const groups = []
+
+    for (let i = 0; i < response.data.length; i += 9) {
+      const nt = response.data.readUInt32BE(i)
+      const ntEnc = response.data.readUInt32BE(i + 4)
+      const par = response.data.readUInt8(i + 8)
+      groups.push({ nt, ntEnc, par })
+    }
+
+    return groups
   }
 }
 
