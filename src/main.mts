@@ -95,6 +95,27 @@ program
     }
   )
 
+program
+  .command('dump')
+  .description('Dump all blocks')
+  .argument<KeyType>('<key type>', 'known key type', parseKeyType)
+  .argument<Buffer>('<key>', 'known key', parseKey)
+  .action(async (keyType: KeyType, key: Buffer) => {
+    const device = await Device.connect()
+
+    for (let block = 0; block < 64; block++) {
+      try {
+        const response = await device.readMifareBlock(block, keyType, key)
+        console.log(chalk.greenBright(`${block.toString().padStart(2, '0')}:`), response.toString('hex'))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.log(chalk.redBright(`${block.toString(16).padStart(2, '0')}:`), message)
+      }
+    }
+
+    await device.close()
+  })
+
 void program.parseAsync().catch(error => {
   const message = error instanceof Error ? error.message : String(error)
   console.error(chalk.redBright('Error:'), message)
