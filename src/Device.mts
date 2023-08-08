@@ -3,6 +3,7 @@ import { promisify } from 'util'
 
 import { DataFrame, createDataFrame, readDataFrame } from './dataFrames.mjs'
 import Status from './Status.mjs'
+import Command from './Commands.mjs'
 
 class Device {
   private device: SerialPort
@@ -58,22 +59,22 @@ class Device {
   }
 
   async getChipId(): Promise<string> {
-    const response = await this.sendCommand(1011, 0x0000)
+    const response = await this.sendCommand(Command.DATA_CMD_GET_DEVICE_CHIP_ID, 0x0000)
     return response.data.toString('hex')
   }
 
   async isInReaderMode(): Promise<boolean> {
-    const response = await this.sendCommand(1002, 0x0000)
+    const response = await this.sendCommand(Command.DATA_CMD_GET_DEVICE_MODE, 0x0000)
     return response.data[0] === 0x01
   }
 
   async enableReaderMode(): Promise<void> {
-    await this.sendCommand(1001, 0x0000, Buffer.from([0x0001]))
+    await this.sendCommand(Command.DATA_CMD_CHANGE_MODE, 0x0000, Buffer.from([0x0001]))
     if (!(await this.isInReaderMode())) throw new Error('Failed to set reader mode')
   }
 
   async scanTag14A(): Promise<{ uid: string; sak: string; atqa: string }> {
-    const response = await this.sendCommand(2000, 0x0000)
+    const response = await this.sendCommand(Command.DATA_CMD_SCAN_14A_TAG, 0x0000)
 
     if (response.status === Status.HF_TAG_NO) throw new Error('No tag found')
     if (response.status === Status.HF_ERRCRC) throw new Error('Data CRC error')
