@@ -55,6 +55,11 @@ class Device {
           if (response.status === Status.INVALID_CMD) throw new Error('Invalid command')
           if (response.status === Status.NOT_IMPLEMENTED) throw new Error('Not implemented')
           if (response.status === Status.HF_TAG_NO) throw new Error('No tag found')
+          if (response.status === Status.HF_ERRCRC) throw new Error('Data CRC error')
+          if (response.status === Status.HF_COLLISION) throw new Error('Collision error')
+          if (response.status === Status.HF_ERRBCC) throw new Error('UID BCC error')
+          if (response.status === Status.MF_ERRAUTH) throw new Error('Authentication error')
+          if (response.status === Status.HF_ERRPARITY) throw new Error('Data parity error')
 
           resolve(response)
         } catch (err) {
@@ -107,11 +112,6 @@ class Device {
   async scanTag14A(): Promise<{ uid: string; sak: string; atqa: string }> {
     const response = await this.sendCommand(Command.DATA_CMD_SCAN_14A_TAG, 0x0000)
 
-    if (response.status === Status.HF_ERRCRC) throw new Error('Data CRC error')
-    if (response.status === Status.HF_COLLISION) throw new Error('Collision error')
-    if (response.status === Status.HF_ERRBCC) throw new Error('UID BCC error')
-    if (response.status === Status.MF_ERRAUTH) throw new Error('Authentication error')
-    if (response.status === Status.HF_ERRPARITY) throw new Error('Data parity error')
     if (response.status !== Status.HF_TAG_OK) throw new Error('Unknown error')
 
     const uidSize = response.data[10]
