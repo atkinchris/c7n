@@ -10,7 +10,7 @@ const program = new Command()
 program.name('c7n').description('CLI for Chameleon Ultra').version('1.0.0')
 
 program
-  .command('read14a')
+  .command('info')
   .description('Read a tag in ISO 14443A format')
   .action(async () => {
     const device = await Device.connect()
