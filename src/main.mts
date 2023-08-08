@@ -20,10 +20,8 @@ program
     await device.close()
   })
 
-const hardnested = program.command('hardnested').description('Commands to prepare a hardnested attacked')
-
-hardnested
-  .command('make-command')
+program
+  .command('nested')
   .description('Generate the command needed for a hardnested attack')
   .argument<number>('<block>', 'known block', value => parseInt(value, 10))
   .argument<KeyType>('<key type>', 'known key type', parseKeyType)
