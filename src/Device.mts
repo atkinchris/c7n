@@ -24,7 +24,9 @@ class Device {
     const ports = await SerialPort.list()
     const port = ports.find(port => port.manufacturer === 'Proxgrind')
     if (!port) throw new Error('No Chameleon device found')
-    return new Device(port.path)
+    const device = new Device(port.path)
+    await device.enableReaderMode()
+    return device
   }
 
   constructor(path: string) {

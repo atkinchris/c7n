@@ -14,7 +14,6 @@ program
   .description('Read a tag in ISO 14443A format')
   .action(async () => {
     const device = await Device.connect()
-    await device.enableReaderMode()
     console.log(await device.scanTag14A())
 
     await device.close()
