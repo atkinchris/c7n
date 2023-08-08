@@ -52,6 +52,7 @@ class Device {
           if (response.status === Status.DEVICE_MODE_ERROR) throw new Error('Device mode error')
           if (response.status === Status.INVALID_CMD) throw new Error('Invalid command')
           if (response.status === Status.NOT_IMPLEMENTED) throw new Error('Not implemented')
+          if (response.status === Status.HF_TAG_NO) throw new Error('No tag found')
 
           resolve(response)
         } catch (err) {
@@ -88,20 +89,22 @@ class Device {
   async readMifareBlock(block: number, keyType: KeyType, key: Buffer): Promise<Buffer> {
     const data = Buffer.concat([Buffer.from([keyType, block]), key])
     const response = await this.sendCommand(Command.DATA_CMD_MF1_READ_ONE_BLOCK, 0x00, data)
+
     if (response.status !== Status.HF_TAG_OK) throw new Error('Failed to read block')
+
     return response.data
   }
 
   async writeMifareBlock(block: number, keyType: KeyType, key: Buffer, data: Buffer): Promise<void> {
     const dataBuffer = Buffer.concat([Buffer.from([keyType, block]), key, data])
     const response = await this.sendCommand(Command.DATA_CMD_MF1_WRITE_ONE_BLOCK, 0x00, dataBuffer)
+
     if (response.status !== Status.HF_TAG_OK) throw new Error('Failed to write block')
   }
 
   async scanTag14A(): Promise<{ uid: string; sak: string; atqa: string }> {
     const response = await this.sendCommand(Command.DATA_CMD_SCAN_14A_TAG, 0x0000)
 
-    if (response.status === Status.HF_TAG_NO) throw new Error('No tag found')
     if (response.status === Status.HF_ERRCRC) throw new Error('Data CRC error')
     if (response.status === Status.HF_COLLISION) throw new Error('Collision error')
     if (response.status === Status.HF_ERRBCC) throw new Error('UID BCC error')
