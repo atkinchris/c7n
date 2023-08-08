@@ -21,6 +21,35 @@ program
   })
 
 program
+  .command('read')
+  .description('Read data from a block')
+  .argument<number>('<block>', 'block', value => parseInt(value, 10))
+  .argument<KeyType>('<key type>', 'key type', parseKeyType)
+  .argument<Buffer>('<key>', 'key', parseKey)
+  .action(async (block: number, keyType: KeyType, key: Buffer) => {
+    const device = await Device.connect()
+    const response = await device.readMifareBlock(block, keyType, key)
+    await device.close()
+    console.log(response.toString('hex'))
+  })
+
+program
+  .command('write')
+  .description('Write data to a block')
+  .argument<number>('<block>', 'block', value => parseInt(value, 10))
+  .argument<KeyType>('<key type>', 'key type', parseKeyType)
+  .argument<Buffer>('<key>', 'key', parseKey)
+  .argument<Buffer>('<data>', 'data', data => {
+    if (!data.match(/^[a-fA-F0-9]{32}$/)) throw new Error('Invalid data format')
+    return Buffer.from(data, 'hex')
+  })
+  .action(async (block: number, keyType: KeyType, key: Buffer, data: Buffer) => {
+    const device = await Device.connect()
+    await device.writeMifareBlock(block, keyType, key, data)
+    await device.close()
+  })
+
+program
   .command('test-key')
   .description('Test a key')
   .argument<number>('<block>', 'block', value => parseInt(value, 10))

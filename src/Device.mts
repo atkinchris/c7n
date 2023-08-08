@@ -85,6 +85,19 @@ class Device {
     if (!(await this.isInReaderMode())) throw new Error('Failed to set reader mode')
   }
 
+  async readMifareBlock(block: number, keyType: KeyType, key: Buffer): Promise<Buffer> {
+    const data = Buffer.concat([Buffer.from([keyType, block]), key])
+    const response = await this.sendCommand(Command.DATA_CMD_MF1_READ_ONE_BLOCK, 0x00, data)
+    if (response.status !== Status.HF_TAG_OK) throw new Error('Failed to read block')
+    return response.data
+  }
+
+  async writeMifareBlock(block: number, keyType: KeyType, key: Buffer, data: Buffer): Promise<void> {
+    const dataBuffer = Buffer.concat([Buffer.from([keyType, block]), key, data])
+    const response = await this.sendCommand(Command.DATA_CMD_MF1_WRITE_ONE_BLOCK, 0x00, dataBuffer)
+    if (response.status !== Status.HF_TAG_OK) throw new Error('Failed to write block')
+  }
+
   async scanTag14A(): Promise<{ uid: string; sak: string; atqa: string }> {
     const response = await this.sendCommand(Command.DATA_CMD_SCAN_14A_TAG, 0x0000)
 
