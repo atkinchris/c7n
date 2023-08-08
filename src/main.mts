@@ -21,6 +21,24 @@ program
   })
 
 program
+  .command('test-key')
+  .description('Test a key')
+  .argument<number>('<block>', 'block', value => parseInt(value, 10))
+  .argument<KeyType>('<key type>', 'key type', parseKeyType)
+  .argument<Buffer>('<key>', 'key', parseKey)
+  .action(async (block: number, keyType: KeyType, key: Buffer) => {
+    const device = await Device.connect()
+
+    if (await device.testMifareBlockKey(block, keyType, key)) {
+      console.log(chalk.greenBright('Key is valid'))
+    } else {
+      console.error(chalk.redBright('Key is invalid'))
+    }
+
+    await device.close()
+  })
+
+program
   .command('nested')
   .description('Generate the command needed for a hardnested attack')
   .argument<number>('<block>', 'known block', value => parseInt(value, 10))

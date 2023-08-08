@@ -13,7 +13,7 @@ export enum KeyType {
 export const parseKeyType = (keyType: string) => (keyType.toUpperCase() === 'A' ? KeyType.A : KeyType.B)
 
 export const parseKey = (key: string) => {
-  if (!key.match(/^([a-fA-F0-9]{12})"$/)) throw new Error('Invalid key format')
+  if (!key.match(/^([a-fA-F0-9]{12})$/)) throw new Error('Invalid key format')
   return Buffer.from(key, 'hex')
 }
 
@@ -102,6 +102,12 @@ class Device {
     const atqa = response.data.subarray(13, 15).toString('hex').toUpperCase()
 
     return { uid, sak, atqa }
+  }
+
+  async testMifareBlockKey(block: number, keyType: KeyType, key: Buffer): Promise<boolean> {
+    const data = Buffer.concat([Buffer.from([keyType, block]), key])
+    const response = await this.sendCommand(Command.DATA_CMD_MF1_CHECK_ONE_KEY_BLOCK, 0x00, data)
+    return response.status === Status.HF_TAG_OK
   }
 
   async detectNtDistance(
