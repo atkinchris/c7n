@@ -12,6 +12,11 @@ export enum KeyType {
 
 export const parseKeyType = (keyType: string) => (keyType.toUpperCase() === 'A' ? KeyType.A : KeyType.B)
 
+export const parseKey = (key: string) => {
+  if (!key.match(/^([a-fA-F0-9]{12})"$/)) throw new Error('Invalid key format')
+  return Buffer.from(key, 'hex')
+}
+
 class Device {
   private device: SerialPort
 

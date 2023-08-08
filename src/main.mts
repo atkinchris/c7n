@@ -3,7 +3,7 @@
 import { Command } from 'commander'
 import chalk from 'chalk'
 
-import Device, { KeyType, parseKeyType } from './Device.mjs'
+import Device, { KeyType, parseKey, parseKeyType } from './Device.mjs'
 
 const program = new Command()
 
@@ -25,7 +25,7 @@ program
   .description('Generate the command needed for a hardnested attack')
   .argument<number>('<block>', 'known block', value => parseInt(value, 10))
   .argument<KeyType>('<key type>', 'known key type', parseKeyType)
-  .argument<Buffer>('<key>', 'known key', key => Buffer.from(key, 'hex'))
+  .argument<Buffer>('<key>', 'known key', parseKey)
   .argument<number>('<target block>', 'target block', value => parseInt(value, 10))
   .argument<KeyType>('<target key type>', 'target key type', parseKeyType)
   .action(
@@ -44,7 +44,7 @@ program
       await device.close()
 
       console.log(chalk.greenBright('UID:'), uid.toString(16).padStart(8, '0'))
-      const command = [uid, distance, ...groups.map(group => [group.nt, group.ntEnc, group.par]).join(' ')]
+      const command = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].join(' ')
       console.log(command)
     }
   )
