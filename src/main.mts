@@ -1,3 +1,5 @@
+#!/usr/bin/env node --no-warnings --loader tsx
+
 import { Command } from 'commander'
 import chalk from 'chalk'
 
