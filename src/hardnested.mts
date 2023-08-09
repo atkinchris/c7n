@@ -54,12 +54,11 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
 
   for (let i = 0; i < 64; i++) await testKeys(i)
 
-  const knownBlockIndex = blocks.findIndex(block => block !== null)
-  const knownBlock = blocks[knownBlockIndex]
+  const knownBlock = blocks.find(block => block !== null)
   if (!knownBlock) throw new Error('No known block found')
 
   // Print to stderr so that it doesn't get piped to stdout
-  console.error(chalk.gray(`Known block: ${knownBlockIndex} (${knownBlock.key.toString('hex')})`))
+  console.error(chalk.gray(`Known block: ${knownBlock.index} (${knownBlock.key.toString('hex')})`))
 
   const attackBlock = async (i: number): Promise<void> => {
     // Skip known blocks
@@ -71,8 +70,8 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
     if (blocks[i] !== null) return
 
     // Run nested attack
-    const { uid, distance } = await device.detectNtDistance(knownBlockIndex, keyType, knownBlock.key)
-    const groups = await device.acquireNestedGroups(knownBlockIndex, keyType, knownBlock.key, i, keyType)
+    const { uid, distance } = await device.detectNtDistance(knownBlock.index, keyType, knownBlock.key)
+    const groups = await device.acquireNestedGroups(knownBlock.index, keyType, knownBlock.key, i, keyType)
     const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
     const foundKeys = runNested(args)
     // Print to stderr so that it doesn't get piped to stdout
