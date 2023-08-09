@@ -6,6 +6,8 @@ import { spawnSync } from 'child_process'
 
 import Device, { KeyType, parseKey, parseKeyType } from './Device.mjs'
 
+const STANDARD_KEYS = ['FFFFFFFFFFFF', 'A0A1A2A3A4A5', 'D3F7D3F7D3F7', '000000000000']
+
 const nested = (args: string[]): string[] => {
   const stdout = spawnSync('./bin/nested', args, { encoding: 'utf-8' }).stdout
   return stdout
@@ -139,6 +141,40 @@ program
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         console.log(chalk.redBright(`${block.toString().padStart(2, '0')}:`), message)
+      }
+    }
+
+    await device.close()
+  })
+
+program
+  .command('nested-dump')
+  .description('Dump all blocks using nested attack')
+  .argument('[keys...]', 'known keys')
+  .action(async (providedKeys: string[]) => {
+    const uniqueKeys = new Set([...STANDARD_KEYS, ...providedKeys])
+    const keys = [...uniqueKeys].map(key => Buffer.from(key, 'hex'))
+    const blocks = Array(64).fill(null) as Array<null | { key: Buffer; data: Buffer }>
+    const device = await Device.connect()
+
+    await device.scanTag14A()
+
+    for (let i = 0; i < 64; i++) {
+      for (const key of keys) {
+        const data = await device.readMifareBlock(i, KeyType.A, key).catch(() => null)
+        if (data === null) continue
+        blocks[i] = { key, data }
+        break
+      }
+    }
+
+    for (let i = 0; i < 64; i++) {
+      const block = blocks[i]
+      if (block === null) {
+        console.log(chalk.redBright(`${i.toString().padStart(2, '0')}:`), 'No key found')
+      } else {
+        const { key, data } = block
+        console.log(chalk.greenBright(`${i.toString().padStart(2, '0')}:`), key.toString('hex'), data.toString('hex'))
       }
     }
 
