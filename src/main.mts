@@ -152,7 +152,11 @@ program
   .command('nested-dump')
   .description('Dump all blocks using nested attack')
   .argument('[keys...]', 'known keys')
+  .option<number>('-p, --passes [number]', 'number of passes', value => parseInt(value, 10), 2)
   .action(async (providedKeys: string[]) => {
+    const options = program.opts<{ passes?: number }>()
+    const passes = Math.max(2, options.passes ?? 0)
+
     const keys = new Set([...STANDARD_KEYS, ...providedKeys].map(key => key.toLowerCase()))
     const blocks = Array(64).fill(null) as Array<null | { key: Buffer; data: Buffer }>
     const device = await Device.connect()
@@ -160,7 +164,8 @@ program
     await device.scanTag14A()
 
     const testKeys = async (block: number, keysToTest = keys): Promise<string | null> => {
-      console.log(chalk.gray(`Testing keys for block ${block}`))
+      // Print to stderr so that it doesn't get piped to stdout
+      console.error(chalk.gray(`Testing keys for block ${block}`))
 
       for (const keyString of keysToTest) {
         const key = Buffer.from(keyString, 'hex')
@@ -179,27 +184,33 @@ program
     const knownBlock = blocks[knownBlockIndex]
     if (!knownBlock) throw new Error('No known block found')
 
-    for (let i = 0; i < 64; i++) {
+    const attackBlock = async (i: number): Promise<void> => {
       // Skip known blocks
-      if (blocks[i] !== null) continue
+      if (blocks[i] !== null) return
 
       // Test keys that have been found so far
       await testKeys(i)
       // If a key has now been found, skip to next block
-      if (blocks[i] !== null) continue
+      if (blocks[i] !== null) return
 
       // Run nested attack
       const { uid, distance } = await device.detectNtDistance(knownBlockIndex, KeyType.A, knownBlock.key)
       const groups = await device.acquireNestedGroups(knownBlockIndex, KeyType.A, knownBlock.key, i, KeyType.A)
       const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
       const foundKeys = nested(args)
-      console.log(chalk.gray(`Ran nested attack on block ${i}: found ${foundKeys.size} key(s)`))
+      // Print to stderr so that it doesn't get piped to stdout
+      console.error(chalk.gray(`Ran nested attack on block ${i}: found ${foundKeys.size} key(s)`))
 
       // Test keys that have been found
       const workingKey = await testKeys(i, foundKeys)
 
       // Add the working key to the list of known keys
       if (workingKey !== null) keys.add(workingKey)
+    }
+
+    // Run attack multiple times, as some keys may only be found once earlier keys have been found
+    for (let pass = 0; pass < passes; pass++) {
+      for (let i = 0; i < 64; i++) await attackBlock(i)
     }
 
     for (let i = 0; i < 64; i++) {
