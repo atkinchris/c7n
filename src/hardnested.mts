@@ -6,6 +6,7 @@ import Device, { KeyType } from './Device.mjs'
 const STANDARD_KEYS = ['FFFFFFFFFFFF', 'A0A1A2A3A4A5', 'D3F7D3F7D3F7', '000000000000']
 
 interface Block {
+  index: number
   key: Buffer
   data: Buffer
 }
@@ -44,7 +45,7 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
       const key = Buffer.from(keyString, 'hex')
       const response = await device.readMifareBlock(block, keyType, key).catch(() => null)
       if (response === null) continue
-      blocks[block] = { key, data: response }
+      blocks[block] = { index: block, key, data: response }
       return key.toString('hex')
     }
 
