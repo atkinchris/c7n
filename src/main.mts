@@ -6,6 +6,19 @@ import { spawnSync } from 'child_process'
 
 import Device, { KeyType, parseKey, parseKeyType } from './Device.mjs'
 
+const nested = (args: string[]): string[] => {
+  const stdout = spawnSync('./bin/nested', args, { encoding: 'utf-8' }).stdout
+  return stdout
+    .trim()
+    .split('\n')
+    .flatMap(line => {
+      const trimmed = line.trim()
+      const match = trimmed.match(/Key [0-9]\.\.\. ([a-f0-9]{12})/)
+      if (match === null) return []
+      return [match[1]]
+    })
+}
+
 const program = new Command()
 
 program.name('c7n').description('CLI for Chameleon Ultra').version('1.0.0')
@@ -90,18 +103,7 @@ program
 
       const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
 
-      const stdout = spawnSync('./bin/nested', args, { encoding: 'utf-8' }).stdout
-
-      const keys = stdout
-        .trim()
-        .split('\n')
-        .flatMap(line => {
-          const trimmed = line.trim()
-          const match = trimmed.match(/Key [0-9]\.\.\. ([a-f0-9]{12})/)
-          if (match === null) return []
-          return [match[1]]
-        })
-
+      const keys = nested(args)
       if (keys.length === 0) throw new Error('No keys found')
 
       console.log(chalk.greenBright(`Found ${keys.length} key${keys.length === 1 ? '' : 's'}`))
@@ -136,7 +138,7 @@ program
         console.log(chalk.greenBright(`${block.toString().padStart(2, '0')}:`), response.toString('hex'))
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        console.log(chalk.redBright(`${block.toString(16).padStart(2, '0')}:`), message)
+        console.log(chalk.redBright(`${block.toString().padStart(2, '0')}:`), message)
       }
     }
 
