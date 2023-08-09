@@ -54,13 +54,7 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
 
   for (let i = 0; i < 64; i++) await testKeys(i)
 
-  const knownBlock = blocks.find(block => block !== null)
-  if (!knownBlock) throw new Error('No known block found')
-
-  // Print to stderr so that it doesn't get piped to stdout
-  console.error(chalk.gray(`Known block: ${knownBlock.index} (${knownBlock.key.toString('hex')})`))
-
-  const attackBlock = async (i: number): Promise<void> => {
+  const attackBlock = async (i: number, knownBlock: Block): Promise<void> => {
     // Skip known blocks
     if (blocks[i] !== null) return
 
@@ -86,7 +80,13 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
 
   // Run attack multiple times, as some keys may only be found once earlier keys have been found
   for (let pass = 0; pass < passes; pass++) {
-    for (let i = 0; i < 64; i++) await attackBlock(i)
+    const knownBlock = blocks.find(block => block !== null)
+    if (!knownBlock) throw new Error('No known block found')
+
+    // Print to stderr so that it doesn't get piped to stdout
+    console.error(chalk.gray(`Known block: ${knownBlock.index} (${knownBlock.key.toString('hex')})`))
+
+    for (let i = 0; i < 64; i++) await attackBlock(i, knownBlock)
   }
 
   for (let i = 0; i < 64; i++) {
