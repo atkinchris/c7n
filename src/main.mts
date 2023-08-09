@@ -2,6 +2,7 @@
 
 import { Command } from 'commander'
 import chalk from 'chalk'
+import { spawnSync } from 'child_process'
 
 import Device, { KeyType, parseKey, parseKeyType } from './Device.mjs'
 
@@ -87,11 +88,37 @@ program
       const { uid, distance } = await device.detectNtDistance(knownBlock, knownKeyType, knownKey)
       const groups = await device.acquireNestedGroups(knownBlock, knownKeyType, knownKey, targetBlock, targetKeyType)
 
-      await device.close()
+      const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
 
-      console.log(chalk.greenBright('UID:'), uid.toString(16).padStart(8, '0'))
-      const command = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].join(' ')
-      console.log(command)
+      const stdout = spawnSync('./bin/nested', args, { encoding: 'utf-8' }).stdout
+
+      const keys = stdout
+        .trim()
+        .split('\n')
+        .flatMap(line => {
+          const trimmed = line.trim()
+          const match = trimmed.match(/Key [0-9]\.\.\. ([a-f0-9]{12})/)
+          if (match === null) return []
+          return [match[1]]
+        })
+
+      if (keys.length === 0) throw new Error('No keys found')
+
+      console.log(chalk.greenBright(`Found ${keys.length} key${keys.length === 1 ? '' : 's'}`))
+
+      for (const key of keys) {
+        try {
+          const response = await device.readMifareBlock(targetBlock, targetKeyType, Buffer.from(key, 'hex'))
+          console.log(chalk.greenBright(key), response.toString('hex'))
+          await device.close()
+          return
+        } catch (error) {
+          // Ignore
+        }
+      }
+
+      console.error(chalk.redBright('No valid key found'))
+      await device.close()
     }
   )
 
