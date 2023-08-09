@@ -19,8 +19,11 @@ const runNested = (args: string[]): Set<string> => {
   return new Set(keys)
 }
 
-const hardnestedAttack = async (providedKeys: string[], customPasses?: number) => {
+const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, customPasses?: number) => {
   const passes = Math.max(2, customPasses ?? 0)
+  console.error(chalk.gray(`Running hardnested attack with ${passes} pass(es)`))
+  console.error(chalk.gray(`Using key type ${KeyType[keyType]}`))
+  console.error('\n')
 
   const keys = new Set([...STANDARD_KEYS, ...providedKeys].map(key => key.toLowerCase()))
   const blocks = Array(64).fill(null) as Array<null | { key: Buffer; data: Buffer }>
@@ -34,7 +37,7 @@ const hardnestedAttack = async (providedKeys: string[], customPasses?: number) =
 
     for (const keyString of keysToTest) {
       const key = Buffer.from(keyString, 'hex')
-      const response = await device.readMifareBlock(block, KeyType.A, key).catch(() => null)
+      const response = await device.readMifareBlock(block, keyType, key).catch(() => null)
       if (response === null) continue
       blocks[block] = { key, data: response }
       return key.toString('hex')
@@ -59,8 +62,8 @@ const hardnestedAttack = async (providedKeys: string[], customPasses?: number) =
     if (blocks[i] !== null) return
 
     // Run nested attack
-    const { uid, distance } = await device.detectNtDistance(knownBlockIndex, KeyType.A, knownBlock.key)
-    const groups = await device.acquireNestedGroups(knownBlockIndex, KeyType.A, knownBlock.key, i, KeyType.A)
+    const { uid, distance } = await device.detectNtDistance(knownBlockIndex, keyType, knownBlock.key)
+    const groups = await device.acquireNestedGroups(knownBlockIndex, keyType, knownBlock.key, i, keyType)
     const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
     const foundKeys = runNested(args)
     // Print to stderr so that it doesn't get piped to stdout

@@ -93,10 +93,9 @@ program
   .description('Dump all blocks using nested attack')
   .argument('[keys...]', 'known keys')
   .option<number>('-p, --passes [number]', 'number of passes', value => parseInt(value, 10), 2)
-  .action(async () => {
-    const options = program.opts<{ passes?: number }>()
-    const args = program.args
-    await hardnestedAttack(args, options.passes)
+  .option('-t, --type [type]', 'key type (A or B)', 'A')
+  .action(async (keys: string[], opts: { passes?: number; type: string }) => {
+    await hardnestedAttack(keys, parseKeyType(opts.type), opts.passes)
   })
 
 void program.parseAsync().catch(error => {
