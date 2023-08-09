@@ -52,11 +52,14 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
   const knownBlock = blocks[knownBlockIndex]
   if (!knownBlock) throw new Error('No known block found')
 
+  // Print to stderr so that it doesn't get piped to stdout
+  console.error(chalk.gray(`Known block: ${knownBlockIndex} (${knownBlock.key.toString('hex')})`))
+
   const attackBlock = async (i: number): Promise<void> => {
     // Skip known blocks
     if (blocks[i] !== null) return
 
-    // Test keys that have been found so far
+    // Test keys that h§ave been found so far
     await testKeys(i)
     // If a key has now been found, skip to next block
     if (blocks[i] !== null) return
