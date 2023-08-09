@@ -5,6 +5,11 @@ import Device, { KeyType } from './Device.mjs'
 
 const STANDARD_KEYS = ['FFFFFFFFFFFF', 'A0A1A2A3A4A5', 'D3F7D3F7D3F7', '000000000000']
 
+interface Block {
+  key: Buffer
+  data: Buffer
+}
+
 const runNested = (args: string[]): Set<string> => {
   const stdout = spawnSync('./bin/nested', args, { encoding: 'utf-8' }).stdout
   const keys = stdout
@@ -26,7 +31,7 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
   console.error('\n')
 
   const keys = new Set([...STANDARD_KEYS, ...providedKeys].map(key => key.toLowerCase()))
-  const blocks = Array(64).fill(null) as Array<null | { key: Buffer; data: Buffer }>
+  const blocks = Array<Block | null>(64).fill(null)
   const device = await Device.connect()
 
   await device.scanTag14A()
