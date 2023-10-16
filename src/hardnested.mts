@@ -80,7 +80,7 @@ const hardnestedAttack = async (providedKeys: string[], keyType = KeyType.A, cus
 
   // Run attack multiple times, as some keys may only be found once earlier keys have been found
   for (let pass = 0; pass < passes; pass++) {
-    const knownBlock = [...blocks].sort(Math.random).find(block => block !== null)
+    const knownBlock = [...blocks].sort(() => 0.5 - Math.random()).find(block => block !== null)
     if (!knownBlock) throw new Error('No known block found')
 
     // Print to stderr so that it doesn't get piped to stdout
